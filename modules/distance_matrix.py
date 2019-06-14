@@ -1,11 +1,14 @@
-import graph_tool.all as gt
+# import graph_tool.all as gt
+import networkx as nx
 import numpy as np
 import itertools
+import pandas
 
 
 def get_modified_adjacency_matrix(g, k):
     # Get regular adjacency matrix
-    adj = gt.adjacency(g)
+    # adj = gt.adjacency(g)
+    adj = nx.adjacency_matrix(g)
 
     # Initialize the modified adjacency matrix
     X = np.zeros(adj.shape)
@@ -27,29 +30,32 @@ def get_shortest_path_distance_matrix(g, k=10, weights=None):
     # Used to find which vertices are not connected. This has to be this weird,
     # since graph_tool uses maxint for the shortest path distance between
     # unconnected vertices.
-    def get_unconnected_distance():
-        g_mock = gt.Graph()
-        g_mock.add_vertex(2)
-        shortest_distances_mock = gt.shortest_distance(g_mock)
-        unconnected_dist = shortest_distances_mock[0][1]
-        return unconnected_dist
+    # def get_unconnected_distance():
+    #     # g_mock = gt.Graph()
+    #     # g_mock.add_vertex(2)
+    #     # shortest_distances_mock = gt.shortest_distance(g_mock)
+    #     # unconnected_dist = shortest_distances_mock[0][1]
+    #     # return unconnected_dist
 
     # Get the value (usually maxint) that graph_tool uses for distances between
     # unconnected vertices.
-    unconnected_dist = get_unconnected_distance()
+    # unconnected_dist = get_unconnected_distance()
     
     # Get shortest distances for all pairs of vertices in a NumPy array.
-    X = gt.shortest_distance(g, weights=weights).get_2d_array(range(g.num_vertices()))
+    # X = gt.shortest_distance(g, weights=weights).get_2d_array(range(g.num_vertices()))
+    X = pandas.DataFrame.from_dict(dict(nx.shortest_path_length(g))).values
 
-    if len(X[X == unconnected_dist]) > 0:
+    if len(X[~np.isnan(X)]) > 0:
         print('[distance_matrix] There were disconnected components!')
 
     # Get maximum shortest-path distance (ignoring maxint)
-    X_max = X[X != unconnected_dist].max()
+    # X_max = X[X != unconnected_dist].max()
+    X_max = X[~np.isnan(X)].max()
 
     # Set the unconnected distances to k times the maximum of the other
     # distances.
-    X[X == unconnected_dist] = k * X_max
+    # X[X == unconnected_dist] = k * X_max
+    X[np.isnan(X)] = k * X_max
     
     return X
 
@@ -79,3 +85,14 @@ def get_distance_matrix(g, distance_metric, normalize=True, k=10.0, verbose=True
         print('[distance_matrix] Done!')
 
     return X
+
+if __name__ == '__main__':
+    g = nx.Graph()
+    g.add_edge(0, 1)
+    g.add_edge(1, 2)
+    g.add_edge(2, 3)
+    g.add_edge(1, 3)
+    g.add_node(4)
+
+    sss = get_distance_matrix(g, 'spdm')
+

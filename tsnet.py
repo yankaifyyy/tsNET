@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser(description='Read a graph, and produce a layout with tsNET(*).')
@@ -15,11 +14,15 @@ if __name__ == '__main__':
 
     import os
     import time
-    import graph_tool.all as gt
+    # import graph_tool.all as gtgt
+    import networkx as nx
     import modules.layout_io as layout_io
     import modules.graph_io as graph_io
     import modules.distance_matrix as distance_matrix
     import modules.thesne as thesne
+
+    import matplotlib.pyplot as plt
+    import pandas as pd
 
     # Check for valid input
     assert(os.path.isfile(args.input_graph))
@@ -49,7 +52,7 @@ if __name__ == '__main__':
     g = graph_io.load_graph(args.input_graph)
     print('Done.')
 
-    print('Input graph: {0}, (|V|, |E|) = ({1}, {2})'.format(graph_name, g.num_vertices(), g.num_edges()))
+    print('Input graph: {0}, (|V|, |E|) = ({1}, {2})'.format(graph_name, len(g), g.number_of_edges()))
 
     # Load the PivotMDS layout for initial placement
     if args.star:
@@ -86,12 +89,16 @@ if __name__ == '__main__':
     comp_time = end_time - start_time
     print('tsNET took {0:.2f} s.'.format(comp_time))
 
+    pos = pd.DataFrame(Y.T).to_dict('list')
+    nx.draw(g, pos=pos)
+    plt.show()
+
     # Convert layout to vertex property
-    pos = g.new_vp('vector<float>')
-    pos.set_2d_array(Y.T)
+    # pos = g.new_vp('vector<float>')
+    # pos.set_2d_array(Y.T)
 
     # Show layout on the screen
-    gt.graph_draw(g, pos=pos)
+    # gt.graph_draw(g, pos=pos)
 
     if args.output is not None:
         layout_io.save_vna(args.output, g, Y)

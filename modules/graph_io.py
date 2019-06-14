@@ -1,6 +1,7 @@
 import os
 import numpy as np
-import graph_tool.all as gt
+# import graph_tool.all as gt
+import networkx as nx
 
 
 def load_graph(in_file):
@@ -26,23 +27,24 @@ def load_vna(in_file):
         line = next(it)
         while not (line.lower().startswith('*node properties') or line.lower().startswith('*node data')):
             line = next(it)
-        
+
         node_properties = next(it).split(' ')
         node_properties = [word.lower() for word in node_properties]
         assert('id' in node_properties)
 
         vertices = dict()
         line = next(it)
-        gt_idx = 0 # Index for gt
+        gt_idx = 0  # Index for gt
         while not line.startswith('*'):
             entries = line.split(' ')
             vna_id = entries[0]
             vertex = dict()
             for i, prop in enumerate(node_properties):
                 vertex[prop] = entries[i]
-            vertex['id'] = gt_idx # Replace VNA ID by numerical gt index
-            vertices[vna_id] = vertex # Retain VNA ID as key of the vertices dict
-            
+            vertex['id'] = gt_idx  # Replace VNA ID by numerical gt index
+            # Retain VNA ID as key of the vertices dict
+            vertices[vna_id] = vertex
+
             gt_idx += 1
             line = next(it)
 
@@ -64,12 +66,16 @@ def load_vna(in_file):
         except StopIteration:
             pass
 
-        g = gt.Graph(directed=False)
-        g.add_vertex(len(vertices))
-        for v_i, v_j in edges:
-            g.add_edge(v_i, v_j)
+        # g = gt.Graph(directed=False)
+        # g.add_vertex(len(vertices))
+        # for v_i, v_j in edges:
+        #     g.add_edge(v_i, v_j)
 
-        gt.remove_parallel_edges(g)
+        # gt.remove_parallel_edges(g)
+
+        g = nx.Graph(directed=False)
+        g.add_nodes_from(range(len(vertices)))
+        g.add_edges_from(edges)
 
         return g
     return None
@@ -86,3 +92,7 @@ def save_vna(out_file, g):
         for v1, v2 in g.edges():
             f.write('{0} {1} 1\n'.format(int(v1), int(v2)))
         f.close()
+
+
+if __name__ == '__main__':
+    g = load_graph('graphs/dwt_72.vna')

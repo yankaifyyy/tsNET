@@ -1,6 +1,8 @@
 import os
 import numpy as np
-import graph_tool.all as gt
+import pandas as pd
+# import graph_tool.all as gt
+import networkx as nx
 import modules.graph_io as graph_io
 
 
@@ -9,11 +11,12 @@ def load_layout(in_file):
     if extension == '.vna':
         return load_vna(in_file)
 
-    
+
 def save_layout(out_file, g, Y):
     extension = os.path.splitext(out_file)[1]
     if extension == '.vna':
         save_vna(out_file, g, Y)
+
 
 def load_vna(in_file):
     with open(in_file) as f:
@@ -25,20 +28,21 @@ def load_vna(in_file):
         line = next(it)
         while not line.lower().startswith('*node data'):
             line = next(it)
-        
+
         node_data = [word.lower() for word in next(it).split(' ')]
         assert('id' in node_data)
 
         vertices = dict()
         line = next(it)
-        gt_idx = 0 # Index for gt
+        gt_idx = 0  # Index for gt
         while not line.lower().startswith('*'):
             entries = line.split(' ')
             vna_id = entries[0]
             vertex = dict()
-            vertex['id'] = gt_idx # Replace VNA ID by numerical gt index
-            vertices[vna_id] = vertex # Retain VNA ID as key of the vertices dict
-            
+            vertex['id'] = gt_idx  # Replace VNA ID by numerical gt index
+            # Retain VNA ID as key of the vertices dict
+            vertices[vna_id] = vertex
+
             gt_idx += 1
             line = next(it)
 
@@ -72,19 +76,24 @@ def load_vna(in_file):
         except StopIteration:
             pass
 
-        g = gt.Graph(directed=False)
-        g.add_vertex(len(vertices))
-        for v_i, v_j in edges:
-            g.add_edge(v_i, v_j)
+        # g = gt.Graph(directed=False)
+        # g.add_vertex(len(vertices))
+        # for v_i, v_j in edges:
+        #     g.add_edge(v_i, v_j)
 
-        gt.remove_parallel_edges(g)
+        # gt.remove_parallel_edges(g)
+        g = nx.Graph(directed=False)
+        g.add_nodes_from(range(len(vertices)))
+        g.add_edges_from(edges)
 
-        Y = np.zeros((g.num_vertices(), 2))
+        Y = np.zeros((len(g), 2))
+        # Y = np.zeros((g.num_vertices(), 2))
         for v in vertices.keys():
             Y[vertices[v]['id'], 0] = float(vertices[v]['x'])
             Y[vertices[v]['id'], 1] = float(vertices[v]['y'])
-        pos = g.new_vertex_property('vector<double>')
-        pos.set_2d_array(Y.T)
+        # pos = g.new_vertex_property('vector<double>')
+        # pos.set_2d_array(Y.T)
+        nx.set_node_attributes(g, pd.DataFrame(Y.T).to_dict('list'), 'pos')
 
         return g, Y
     return None
@@ -115,7 +124,7 @@ def normalize_layout(Y, verbose=False):
     # Translate s.t. smallest values for both x and y are 0.
     for dim in range(Y.shape[1]):
         Y_cpy[:, dim] += -Y_cpy[:, dim].min()
-        
+
     # Scale s.t. max(max(x, y)) = 1 (while keeping the same aspect ratio!)
     scaling = 1 / (np.absolute(Y_cpy).max())
     Y_cpy *= scaling
